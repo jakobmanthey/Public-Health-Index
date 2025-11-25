@@ -55,7 +55,7 @@ theme_set(theme_minimal() +
 ##  exposure data
 # -------------------------------------------------------
 
-path <- file.path("exposure", "exposure_v1.xlsx")
+path <- file.path("data", "exposure_v1.xlsx")
 input1 <- data.table(openxlsx::read.xlsx(path, 
                                         sheet = "summary",
                                         rows = c(3:22),
