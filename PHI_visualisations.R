@@ -13,10 +13,10 @@ library(rnaturalearthdata)
 
 # Load data
 rm(list = ls())
-setwd("/Users/carolinkilian/Desktop/Präventionsindex/Ergebnisse PHI/")
-DATE <- 20251110
+setwd("/Users/carolinkilian/Desktop/Public Health Index/Github/Public-Health-Index/")
+DATE <- 20251125
 
-data <- read.xlsx("phi_data_combined.xlsx", na.strings = ".") 
+data <- read.xlsx("data/phi_data_combined.xlsx", na.strings = ".") 
 
 # set ggplot standard theme
 
@@ -32,31 +32,23 @@ theme_set(theme_minimal() +
 # total scores by domain
 
 pdat_total <- data %>%
-  group_by(country) %>% 
-  mutate(maxvalue_scale = sum(maxvalue)) %>%
   group_by(country, domain) %>% 
-  summarise(value = sum(value, na.rm = T),
-            maxvalue_scale = mean(maxvalue_scale)) %>% ungroup() %>% 
-  mutate(prop = value / maxvalue_scale,
-         subscale = "Public Health Index")
+  summarise(value = sum(value, na.rm = T)) %>% 
+  mutate(subscale = "Public Health Index")
 
-# reweighting scores
+# z-standardizing scores by domain
 
 pdat_domain <- data %>% 
-  group_by(country, subscale) %>% 
-  mutate(maxvalue_scale = sum(maxvalue)) %>% 
-  group_by(subscale) %>%
-  mutate(prop = value / maxvalue_scale) %>% 
-  ungroup()  %>%
   bind_rows(pdat_total) %>% 
+  group_by(country, subscale, domain) %>% 
+  summarise(value = sum(value)) %>%
+  group_by(subscale, domain) %>%
+  mutate(zvalue = (value - mean(value, na.rm = T)) / sd(value, na.rm = T)) %>% 
+  ungroup()  %>%
   mutate(domain = factor(domain, levels = c("other", "public policy", "marketing", "environment", "price")),
          subscale = factor(subscale, levels = c("Public Health Index", "Alcohol", "Tobacco", "Physical activity", "Nutrition")))
 
-pdat_domain_std <- pdat_domain %>% 
-  group_by(subscale, domain, item) %>% 
-  mutate(prop_std = prop - mean(prop))
-
-# total scores by subscale
+# total scores by sub-scale
 
 pdat_scale <- data %>% 
   group_by(country, subscale) %>% 
@@ -95,7 +87,7 @@ ggplot(data = pdat_map) +
   theme_void() + theme(legend.position = c(0, 0.22)) +
   coord_sf(xlim = c(-25,40), ylim = c(30,75), expand = FALSE) 
 
-ggsave("Fig1_PHIgesamt.png", width = 8, height = 6, dpi = 300, bg = "white")
+ggsave("figures/Fig1_PHIgesamt.png", width = 8, height = 6, dpi = 300, bg = "white")
 
 # Fig 2) PHI by subscale 
 
@@ -121,24 +113,14 @@ apanel <-
 
 fig1 <- grid.arrange(apanel, bpanel, widths = c(1,2))
 
-ggsave("Fig2_PHIgesamt.png", fig1, width = 14, height = 8, dpi = 300, bg = "white")
+ggsave("figures/Fig2_PHIgesamt.png", fig1, width = 14, height = 8, dpi = 300, bg = "white")
 
 # Fig 3) scores by policy domain
 
 ggplot(pdat_domain) + 
-  geom_bar(aes(y = subscale, x = prop, fill = domain), stat = "identity", position = "stack") + 
+  geom_bar(aes(y = subscale, x = zvalue, fill = domain), stat = "identity", position = "stack") + 
   facet_wrap(~country, ncol = 3) +
-  scale_x_continuous(labels = scales::percent) + 
   scale_fill_manual(values = c("#E4C287", "#DB8580", "#8F74C6", "#0A2F51", "#52B382"), name = "Policy domain") +
   guides(fill = guide_legend(reverse = T)) 
 
-ggsave("Fig3_PolicyDomain.png", width = 16, height = 8, dpi = 300, bg = "white")
-
-ggplot(pdat_domain_std) + 
-  geom_bar(aes(y = subscale, x = prop_std, fill = domain), stat = "identity", position = "stack") + 
-  facet_wrap(~country, ncol = 3) +
-  scale_x_continuous(labels = scales::percent) + 
-  scale_fill_manual(values = c("#E4C287", "#DB8580", "#8F74C6", "#0A2F51", "#52B382"), name = "Policy domain") +
-  guides(fill = guide_legend(reverse = T)) 
-
-ggsave("Fig3_PolicyContribution.png", width = 16, height = 8, dpi = 300, bg = "white")
+ggsave("figures/Fig3_PolicyContribution.png", width = 16, height = 8, dpi = 300, bg = "white")
