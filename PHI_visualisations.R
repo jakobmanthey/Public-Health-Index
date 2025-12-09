@@ -14,7 +14,7 @@ library(rnaturalearthdata)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20251125
+DATE <- 20251209
 
 data <- read.xlsx("data/phi_data_combined.xlsx", na.strings = ".") 
 
@@ -29,37 +29,43 @@ theme_set(theme_minimal() +
 
 ## Preprocessing
 
+# rescale subscales to range between 0 to 100
+
+pdat <- data %>% 
+  group_by(country, subscale) %>% 
+  mutate(maxvalue_scale = sum(maxvalue)) %>% 
+  group_by(country, subscale, item) %>% 
+  mutate(svalue = value * (100 / maxvalue_scale))
+
 # total scores by domain
 
-pdat_total <- data %>%
+pdat_total <- pdat %>%
   group_by(country, domain) %>% 
-  summarise(value = sum(value, na.rm = T)) %>% 
+  summarise(svalue = sum(svalue, na.rm = T) / 4) %>% 
   mutate(subscale = "Public Health Index")
 
 # z-standardizing scores by domain
 
-pdat_domain <- data %>% 
+pdat_domain <- pdat %>% 
   bind_rows(pdat_total) %>% 
   group_by(country, subscale, domain) %>% 
-  summarise(value = sum(value)) %>%
+  summarise(svalue = sum(svalue)) %>%
   group_by(subscale, domain) %>%
-  mutate(zvalue = (value - mean(value, na.rm = T)) / sd(value, na.rm = T)) %>% 
+  mutate(zvalue = (svalue - mean(svalue, na.rm = T)) / sd(svalue, na.rm = T)) %>% 
   ungroup()  %>%
-  mutate(domain = factor(domain, levels = c("other", "public policy", "marketing", "environment", "price")),
-         subscale = factor(subscale, levels = c("Public Health Index", "Alcohol", "Tobacco", "Physical activity", "Nutrition")))
+  mutate(domain = factor(domain, levels = c("other", "public policy", "marketing", "living environment", "pricing")),
+         subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")))
 
 # total scores by sub-scale
 
-pdat_scale <- data %>% 
+pdat_scale <- pdat %>% 
   group_by(country, subscale) %>% 
-  summarise(value = sum(value, na.rm = T),
-            maxvalue_scale = sum(maxvalue)) %>% ungroup() %>% 
-  mutate(score = round(value/maxvalue_scale*25,1),
-         subscale = factor(subscale, levels = c("Public Health Index", "Alcohol", "Tobacco", "Physical activity", "Nutrition")),
+  summarise(svalue = round(sum(svalue, na.rm = T) / 4,1)) %>% ungroup() %>% 
+  mutate(subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")),
          xcor = as.numeric(fct_rev(subscale))-0.5) 
 
 pdat_phi <- pdat_scale %>% group_by(country) %>%
-  summarise(score = sum(round(score,1)),
+  summarise(svalue = round(sum(svalue),1),
             subscale = "Public Health Index", 
             xcor = 4.5) 
 
@@ -69,8 +75,7 @@ pdat_scale_phi <- pdat_scale %>% bind_rows(pdat_phi) %>%
 pdat_scale_phi %>% pivot_wider(
   id_cols = country,      
   names_from = subscale,  
-  values_from = value     
-)
+  values_from = svalue)
 
 # Fig 1) PHI map
 
@@ -79,7 +84,7 @@ pdat_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
   filter(continent == "Europe")
 
 ggplot(data = pdat_map) + 
-  geom_sf(aes(fill = as.numeric(score), color = "black")) +
+  geom_sf(aes(fill = as.numeric(svalue), color = "black")) +
   scale_color_manual(values = c("black")) + 
   scale_fill_gradient2(low = "#8E3B27", mid = "#FFEB24", high = "#52B382", midpoint = 52, 
                        limits = c(30,75), na.value = "white") +
@@ -93,7 +98,7 @@ ggsave("figures/Fig1_PHIgesamt.png", width = 8, height = 6, dpi = 300, bg = "whi
 
 bpanel <- 
   ggplot(pdat_scale) + 
-    geom_bar(aes(y = reorder(country, score), x = score, fill = subscale), stat = "identity", position = "stack") + 
+    geom_bar(aes(y = reorder(country, svalue), x = svalue, fill = subscale), stat = "identity", position = "stack") + 
     geom_vline(xintercept = 100, color = "grey50") +
     scale_fill_manual(values = c("#CECDE7", "#AABFCD", "#497389", "#2F394D"), name = "") + 
     scale_x_continuous(limits = c(0,100), sec.axis = dup_axis(breaks = 1, labels = c("\n"))) + 
@@ -103,8 +108,8 @@ bpanel <-
 
 apanel <- 
   ggplot(pdat_scale_phi) + 
-    geom_text(aes(y = reorder(country, score), x = xcor, label = paste(sprintf("%.1f", score)), fontface = factor(phi)), family = "Times New Roman") +
-    scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Nutrition", "Physical\nactivity", "Tobacco", "Alcohol", "PHI"), position = "top",
+    geom_text(aes(y = reorder(country, svalue), x = xcor, label = paste(sprintf("%.1f", svalue)), fontface = factor(phi)), family = "Times New Roman") +
+    scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Tobacco", "Alcohol", "Nutrition", "Physical\nactivity", "PHI"), position = "top",
                        sec.axis = dup_axis(breaks = 1, labels = c(""))) +
     scale_discrete_manual(values = c("plain", "bold"), aesthetics = "fontface", guide = "none") + 
     theme(panel.grid.major = element_blank(),
@@ -115,10 +120,11 @@ fig1 <- grid.arrange(apanel, bpanel, widths = c(1,2))
 
 ggsave("figures/Fig2_PHIgesamt.png", fig1, width = 14, height = 8, dpi = 300, bg = "white")
 
-# Fig 3) scores by policy domain
+# Fig 3) svalues by policy domain
 
-ggplot(pdat_domain) + 
+ggplot(pdat_domain[pdat_domain$subscale != "Public Health Index",]) + 
   geom_bar(aes(y = subscale, x = zvalue, fill = domain), stat = "identity", position = "stack") + 
+  geom_vline(aes(xintercept = 0)) + 
   facet_wrap(~country, ncol = 3) +
   scale_fill_manual(values = c("#E4C287", "#DB8580", "#8F74C6", "#0A2F51", "#52B382"), name = "Policy domain") +
   guides(fill = guide_legend(reverse = T)) 
