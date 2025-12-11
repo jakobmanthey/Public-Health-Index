@@ -27,13 +27,19 @@ theme_set(theme_minimal() +
                   legend.title = element_text(size = 12, color = "black", family = "Times New Roman"),
                   axis.title = element_blank()))
 
+# define rounding function
+
+round_xlsx <- function(x, n) {
+  sign(x) * trunc(abs(x) * 10^n + 0.5) / 10^n
+}
+
 ## Preprocessing
 
 # rescale subscales to range between 0 to 100
 
 pdat <- data %>% 
   group_by(country, subscale) %>% 
-  mutate(maxvalue_scale = sum(maxvalue)) %>% 
+  mutate(maxvalue_scale = ifelse(subscale == "Physical activity", mean(maxvalue), sum(maxvalue))) %>% 
   group_by(country, subscale, item) %>% 
   mutate(svalue = value * (100 / maxvalue_scale))
 
@@ -41,7 +47,7 @@ pdat <- data %>%
 
 pdat_total <- pdat %>%
   group_by(country, domain) %>% 
-  summarise(svalue = sum(svalue, na.rm = T) / 4) %>% 
+  summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 1)) %>% 
   mutate(subscale = "Public Health Index")
 
 # z-standardizing scores by domain
@@ -60,12 +66,14 @@ pdat_domain <- pdat %>%
 
 pdat_scale <- pdat %>% 
   group_by(country, subscale) %>% 
-  summarise(svalue = round(sum(svalue, na.rm = T) / 4,1)) %>% ungroup() %>% 
+  summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 1)) %>% 
+  mutate(svalue = ifelse(subscale == "Physical activity", round_xlsx(svalue, 0), svalue),
+         svalue = ifelse(subscale == "Physical activity", round_xlsx(svalue / 4, 1), svalue)) %>% ungroup() %>% 
   mutate(subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")),
          xcor = as.numeric(fct_rev(subscale))-0.5) 
 
 pdat_phi <- pdat_scale %>% group_by(country) %>%
-  summarise(svalue = round(sum(svalue),1),
+  summarise(svalue = round_xlsx(sum(svalue), 1),
             subscale = "Public Health Index", 
             xcor = 4.5) 
 
