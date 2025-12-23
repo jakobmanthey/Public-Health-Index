@@ -16,7 +16,7 @@
 # clean workspace
 rm(list=ls())
 
-packages <- c("data.table", "ggplot2", "ggthemes", "ggrepel")
+packages <- c("data.table", "ggplot2", "ggthemes", "ggrepel", "extrafont", "tidyverse")
 #              "Hmisc", "tidyr", "nnet",
 #              "tableone", "knitr", "kableExtra",
 #              "survey")
@@ -41,7 +41,13 @@ theme_set(theme_minimal() +
                   strip.text = element_text(size = 12, color = "black", family = "Times New Roman"),
                   legend.text = element_text(size = 12, color = "black", family = "Times New Roman"),
                   legend.title = element_text(size = 12, color = "black", family = "Times New Roman"),
-                  axis.title = element_blank()))
+                  #axis.title = element_blank()´
+                  ))
+
+# define rounding function
+round_xlsx <- function(x, n) {
+  sign(x) * trunc(abs(x) * 10^n + 0.5) / 10^n
+}
 
 
 
@@ -55,11 +61,11 @@ theme_set(theme_minimal() +
 ##  exposure data
 # -------------------------------------------------------
 
-path <- file.path("data", "exposure_v1.xlsx")
+path <- file.path("data", "exposure_v2.xlsx")
 input1 <- data.table(openxlsx::read.xlsx(path, 
                                         sheet = "summary",
                                         rows = c(3:22),
-                                        cols = c(2:4,7,8,9,11)
+                                        cols = c(2:4,7,8,11,12)
                                         ))
 
 nrow(input1) # 18
@@ -68,9 +74,10 @@ nrow(input1) # 18
 ##  PHI data
 # -------------------------------------------------------
 
-path <- file.path("phi_data_combined.xlsx")
-input2 <- data.table(read.xlsx(path, na.strings = ".") )
-nrow(input2) # 450
+path <- file.path("data","phi_data_combined.xlsx")
+input2 <- data.table(openxlsx::read.xlsx(path, na.strings = ".") )
+nrow(input2) # 468
+
 
 
 # ==================================================================================================================================================================
@@ -96,33 +103,87 @@ expdat <- melt(expdat, id.vars = c("country"),
 
 expdat[, subscale := dplyr::recode(exp_label,
                                    "alcohol_per_drinker" = "Alcohol",
-                                   "diet_fruit" = "Nutrition",
+                                   "diet_ahei" = "Nutrition",
                                    "insuff_pa_prev" = "Physical activity",
                                    "smoking_prev" = "Tobacco")]
 
-# adjust DIET
+expdat$subscale <- factor(expdat$subscale, levels = c("Tobacco","Alcohol","Nutrition","Physical activity"))
+
+# adjust DIET -> higher values = negative
 expdat[subscale == "Nutrition", exp_value := -exp_value]
 
 ##  PHI data
 # -------------------------------------------------------
 
-phidat <- copy(input2)
-phidat <- phidat[, .(phi_sub_sum = sum(value, na.rm = T)), by = .(country,subscale)]
+# code from Caro:
+
+## Preprocessing
+
+# rescale subscales to range between 0 to 100
+
+pdat <- input2 %>% 
+  group_by(country, subscale) %>% 
+  mutate(maxvalue_scale = ifelse(subscale == "Physical activity", mean(maxvalue), sum(maxvalue))) %>% 
+  group_by(country, subscale, item) %>% 
+  mutate(svalue = value * (100 / maxvalue_scale))
+
+# total scores by domain
+
+pdat_total <- pdat %>%
+  group_by(country, domain) %>% 
+  summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 1)) %>% 
+  mutate(subscale = "Public Health Index")
+
+# z-standardizing scores by domain
+
+pdat_domain <- pdat %>% 
+  bind_rows(pdat_total) %>% 
+  group_by(country, subscale, domain) %>% 
+  summarise(svalue = sum(svalue)) %>%
+  group_by(subscale, domain) %>%
+  mutate(zvalue = (svalue - mean(svalue, na.rm = T)) / sd(svalue, na.rm = T)) %>% 
+  ungroup()  %>%
+  mutate(domain = factor(domain, levels = c("other", "public policy", "marketing", "living environment", "pricing")),
+         subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")))
+
+# total scores by sub-scale
+
+pdat_scale <- pdat %>% 
+  group_by(country, subscale) %>% 
+  summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 1)) %>% 
+  mutate(svalue = ifelse(subscale == "Physical activity", round_xlsx(svalue, 0), svalue),
+         svalue = ifelse(subscale == "Physical activity", round_xlsx(svalue / 4, 1), svalue)) %>% ungroup() %>% 
+  mutate(subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")),
+         xcor = as.numeric(fct_rev(subscale))-0.5) 
+
+pdat_phi <- pdat_scale %>% group_by(country) %>%
+  summarise(svalue = round_xlsx(sum(svalue), 1),
+            subscale = "Public Health Index", 
+            xcor = 4.5) 
+
+pdat_scale_phi <- pdat_scale %>% bind_rows(pdat_phi) %>% 
+  mutate(phi = ifelse(subscale == "Public Health Index", 1, 0))
+
+pdat_scale_phi %>% pivot_wider(
+  id_cols = country,      
+  names_from = subscale,  
+  values_from = svalue)
 
 
 ##  Combine
 # -------------------------------------------------------
 
 data <- merge(expdat, 
-                phidat, 
+              as.data.table(pdat_scale)[,.(country,subscale,phi_score = svalue)], 
                 by = c("country","subscale"), all = T)
 
+data$subscale <- factor(data$subscale, levels = c("Tobacco","Alcohol","Nutrition","Physical activity"))
 
 ##  Standardized vars by subscale
 # -------------------------------------------------------
 
 ##  PHI
-data[, phi_sub_sum_stand := (phi_sub_sum-mean(phi_sub_sum))/sd(phi_sub_sum), by = .(subscale)]
+data[, phi_score_stand := (phi_score-mean(phi_score))/sd(phi_score), by = .(subscale)]
 
 ##  Exposure
 data[, exp_value_stand := (exp_value-mean(exp_value))/sd(exp_value), by = .(subscale)]
@@ -136,10 +197,9 @@ data[, exp_value_stand := (exp_value-mean(exp_value))/sd(exp_value), by = .(subs
 # 3) FIGURES
 # ______________________________________________________________________________________________________________________
 
-pdat <- copy(data[,.(country,subscale,phi_sub_sum_stand,exp_label,exp_value_stand)])
-pdat[, ]
+pdat <- copy(data[,.(country,subscale,phi_score_stand,exp_label,exp_value_stand)])
 
-ggplot(pdat, aes(x = exp_value_stand, y = phi_sub_sum_stand)) + 
+ggplot(pdat, aes(x = exp_value_stand, y = phi_score_stand)) + 
   ggtitle("Variation of exposure (x) and PHI (y) using z-standardized values",
              "higher values = greater exposure (negative implication for public health) or stronger response") + 
   facet_wrap(. ~ subscale) + 
@@ -148,16 +208,16 @@ ggplot(pdat, aes(x = exp_value_stand, y = phi_sub_sum_stand)) +
   scale_x_continuous("Exposure") + 
   scale_y_continuous("PHI score")
   
-
-ggplot(pdat, aes(x = exp_value_stand, y = phi_sub_sum_stand)) + 
+ggplot(pdat, aes(x = exp_value_stand, y = phi_score_stand)) + 
   ggtitle(
-    "Variation of exposure (x) and PHI (y) using z-standardized values",
+    "Variation of exposure (x) and PHI (y) using z-standardised values",
     "higher values = greater exposure (negative implication for public health) or stronger response\nbottom-right panels contain countries with high exposure and low response"
   ) +
   facet_wrap(. ~ subscale) +
+  labs(x = "z-standardised exposure", y = "z-standardised PHI subscale score") +
   annotate(
     "rect",
-    xmin = 0, xmax = Inf,
+    xmin = 1, xmax = Inf,
     ymin = -Inf, ymax = 0,
     fill = "red", alpha = 0.1
   ) +
@@ -165,11 +225,11 @@ ggplot(pdat, aes(x = exp_value_stand, y = phi_sub_sum_stand)) +
   geom_vline(xintercept = 0) +
   geom_point() +
   geom_point(
-    data = subset(pdat, exp_value_stand > 0 & phi_sub_sum_stand < 0),
+    data = subset(pdat, exp_value_stand > 0 & phi_score_stand < 0),
     color = "red"
   ) +
   ggrepel::geom_text_repel(
-    data = ~ subset(.x, exp_value_stand > 0 & phi_sub_sum_stand < 0),
+    data = ~ subset(.x, exp_value_stand > 0 & phi_score_stand < 0),
     aes(label = country),
     hjust = -0.1, vjust = 1.1, size = 3
   )
