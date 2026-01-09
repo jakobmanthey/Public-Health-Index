@@ -112,12 +112,13 @@ bpanel <-
     scale_x_continuous(limits = c(0,100), sec.axis = dup_axis(breaks = 1, labels = c("\n"))) + 
     scale_y_discrete(labels = NULL) +
     guides(fill = guide_legend(reverse = T)) +
-    theme(panel.grid.major.y = element_blank())
+    theme(panel.grid.major.y = element_blank(),
+          legend.position = "bottom")
 
 apanel <- 
   ggplot(pdat_scale_phi) + 
     geom_text(aes(y = reorder(country, svalue), x = xcor, label = paste(sprintf("%.1f", svalue)), fontface = factor(phi)), family = "Times New Roman") +
-    scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Tobacco", "Alcohol", "Unhealthy diet", "Physical\ninactivity", "PHI"), position = "top",
+    scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Tobacco", "Alcohol", "Unhealthy\ndiet", "Physical\ninactivity", "PHI"), position = "top",
                        sec.axis = dup_axis(breaks = 1, labels = c(""))) +
     scale_discrete_manual(values = c("plain", "bold"), aesthetics = "fontface", guide = "none") + 
     theme(panel.grid.major = element_blank(),
@@ -126,7 +127,7 @@ apanel <-
 
 fig1 <- grid.arrange(apanel, bpanel, widths = c(1,2))
 
-ggsave("figures/Fig2_PHIgesamt.png", fig1, width = 14, height = 8, dpi = 300, bg = "white")
+ggsave("figures/Fig2_PHIgesamt_V2.png", fig1, width = 14, height = 8, dpi = 300, bg = "white")
 
 # Fig 3) svalues by policy domain
 
