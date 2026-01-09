@@ -13,8 +13,8 @@ library(rnaturalearthdata)
 
 # Load data
 rm(list = ls())
-setwd("/Users/carolinkilian/Desktop/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20251209
+setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
+DATE <- 20260109
 
 data <- read.xlsx("data/phi_data_combined.xlsx", na.strings = ".") 
 
@@ -39,7 +39,7 @@ round_xlsx <- function(x, n) {
 
 pdat <- data %>% 
   group_by(country, subscale) %>% 
-  mutate(maxvalue_scale = ifelse(subscale == "Physical activity", mean(maxvalue), sum(maxvalue))) %>% 
+  mutate(maxvalue_scale = ifelse(subscale == "Physical inactivity", mean(maxvalue), sum(maxvalue))) %>% 
   group_by(country, subscale, item) %>% 
   mutate(svalue = value * (100 / maxvalue_scale))
 
@@ -59,17 +59,17 @@ pdat_domain <- pdat %>%
   group_by(subscale, domain) %>%
   mutate(zvalue = (svalue - mean(svalue, na.rm = T)) / sd(svalue, na.rm = T)) %>% 
   ungroup()  %>%
-  mutate(domain = factor(domain, levels = c("other", "public policy", "marketing", "living environment", "pricing")),
-         subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")))
+  mutate(domain = factor(domain, levels = c("other", "health communication", "marketing", "living environment", "pricing")),
+         subscale = factor(subscale, levels = c("Public Health Index", "Physical inactivity", "Unhealthy diet", "Alcohol", "Tobacco")))
 
 # total scores by sub-scale
 
 pdat_scale <- pdat %>% 
   group_by(country, subscale) %>% 
   summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 1)) %>% 
-  mutate(svalue = ifelse(subscale == "Physical activity", round_xlsx(svalue, 0), svalue),
-         svalue = ifelse(subscale == "Physical activity", round_xlsx(svalue / 4, 1), svalue)) %>% ungroup() %>% 
-  mutate(subscale = factor(subscale, levels = c("Public Health Index", "Physical activity", "Nutrition", "Alcohol", "Tobacco")),
+  mutate(svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue, 0), svalue),
+         svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue / 4, 1), svalue)) %>% ungroup() %>% 
+  mutate(subscale = factor(subscale, levels = c("Public Health Index", "Physical inactivity", "Unhealthy diet", "Alcohol", "Tobacco")),
          xcor = as.numeric(fct_rev(subscale))-0.5) 
 
 pdat_phi <- pdat_scale %>% group_by(country) %>%
@@ -117,7 +117,7 @@ bpanel <-
 apanel <- 
   ggplot(pdat_scale_phi) + 
     geom_text(aes(y = reorder(country, svalue), x = xcor, label = paste(sprintf("%.1f", svalue)), fontface = factor(phi)), family = "Times New Roman") +
-    scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Tobacco", "Alcohol", "Nutrition", "Physical\nactivity", "PHI"), position = "top",
+    scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Tobacco", "Alcohol", "Unhealthy diet", "Physical\ninactivity", "PHI"), position = "top",
                        sec.axis = dup_axis(breaks = 1, labels = c(""))) +
     scale_discrete_manual(values = c("plain", "bold"), aesthetics = "fontface", guide = "none") + 
     theme(panel.grid.major = element_blank(),
