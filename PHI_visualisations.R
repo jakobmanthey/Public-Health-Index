@@ -244,5 +244,5 @@ fig2b <- grid.arrange(R1, R2, nrow = 2, heights = c(1,1))
 #  scale_fill_manual(values = c("#E4C287", "#DB8580", "#8F74C6", "#0A2F51", "#52B382"), name = "Policy domain") +
 #  guides(fill = guide_legend(reverse = T)) 
 
-ggsave("figures/Fig3_PolicyContribution.png", fig2a, width = 16, height = 6, dpi = 300, bg = "white")
-ggsave("figures/Fig3_PolicyContribution_V2.png", fig2b, width = 16, height = 6, dpi = 300, bg = "white")
+ggsave("figures/Fig3_PolicyContribution_V1.png", fig2a, width = 16, height = 6, dpi = 300, bg = "white")
+ggsave("figures/Fig3_PolicyContribution_V2.png", fig2b, width = 10, height = 8, dpi = 300, bg = "white")
