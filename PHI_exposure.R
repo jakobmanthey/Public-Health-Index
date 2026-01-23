@@ -17,9 +17,6 @@
 rm(list=ls())
 
 packages <- c("data.table", "ggplot2", "ggthemes", "ggrepel", "extrafont", "tidyverse")
-#              "Hmisc", "tidyr", "nnet",
-#              "tableone", "knitr", "kableExtra",
-#              "survey")
 
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
@@ -264,7 +261,13 @@ data <- merge(expdat_wide,
 out <- copy(data[,.(subscale,country,phi_score,y1,y2,change.prop = paste0(round(change.prop,4)*100,"%"),achieved)])[order(subscale,country)]
 names(out) <- c("subscale","country","subscale_PHI_score","NCD_year_1","NCD_year_2","NCD_change_%","NCD_achieved")
 
-openxlsx::write.xlsx(out, paste0("tables/SuppTableY_",Sys.Date(),".xlsx"))
+#openxlsx::write.xlsx(out, paste0("tables/SuppTableY_",Sys.Date(),".xlsx"))
+
+# add z-standardised PHI
+
+data[, phi_score_zstand := (phi_score - mean(phi_score))/sd(phi_score), by = subscale]
+
+
 
 
 # ==================================================================================================================================================================
@@ -283,8 +286,8 @@ setorder(pdat, country, subscale)
 pdat <- pdat[, .(change.prop,
                  x1 = y1,
                  x2 = y2,
-                 y= phi_score[1L],
-                 yend = phi_score[1L]
+                 y= phi_score_zstand[1L],
+                 yend = phi_score_zstand[1L]
 ), by = .(country,subscale,achieved)]
 pdat[, phi_avg := mean(y), by = subscale]
 pdat[, ncd_avg := mean(x2), by = subscale]
@@ -310,12 +313,13 @@ ggplot(pdat, aes(x = x1, xend = x2, y = y, yend = yend, color = achieved)) +
   #geom_rect(data = mean_lines,
   #          aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = hori_line),
   #          fill = "red", alpha = 0.1, inherit.aes = FALSE) +
+  geom_hline(yintercept = 0, alpha = 0.3) +
   geom_point(aes(x = x1, y = y), show.legend = F) +
   geom_segment(arrow = arrow(length = unit(0.15, "cm")), show.legend = F) +
   scale_color_manual("NCD target achieved", values = c("red","darkgreen")) + 
-  labs(x = "NCD target indicator (prevalence or alcohol per capita consumption)", y = "PHI subscale score") 
+  labs(x = "NCD target indicator (prevalence or alcohol per capita consumption)", y = "PHI subscale score (z-standardised)") 
 
-ggsave(paste0("figures/fig_NCD target vs phi_",DATE,".png"), width = 8, height = 8)
+ggsave(paste0("figures/Fig4_NCD target vs phi_zstand_",DATE,".png"), width = 8, height = 8)
 
 
 ##  NCD TARGET vs PHI - with adjustments and labels
@@ -412,6 +416,7 @@ countries_ove <- pdat2[subscale == "Physical inactivity" & achieved == F & y < p
 
 ggplot(pdat2, aes(x = x1, xend = x2, y = phi_score_adj, yend = phi_score_adj, color = achieved)) +
   facet_wrap(. ~ label, scales = "free_x") +
+  geom_hline(yintercept = 0, alpha = 0.3) +
   geom_point(aes(x = x1, y = phi_score_adj), show.legend = F) +
   geom_segment(arrow = arrow(length = unit(0.15, "cm")), show.legend = F) +
   ggrepel::geom_label_repel(
@@ -420,109 +425,8 @@ ggplot(pdat2, aes(x = x1, xend = x2, y = phi_score_adj, yend = phi_score_adj, co
     #hjust = -0.1, vjust = -1.1, 
     alpha = 0.3, size = 3, show.legend = F) +
   scale_color_manual("NCD target achieved", values = c("red","darkgreen")) + 
-  labs(x = "NCD target indicator (prevalence or alcohol per capita consumption)", y = "PHI subscale score") 
+  labs(x = "NCD target indicator (prevalence or alcohol per capita consumption)", y = "PHI subscale score (z-standardised)") 
 
-ggsave(paste0("figures/fig_NCD target vs phi_adjusted_",DATE,".png"), width = 8, height = 8)
-ggsave(paste0("figures/fig_NCD target vs phi_adjusted_",DATE,".svg"), width = 8, height = 8)
+ggsave(paste0("figures/Fig4_NCD target vs phi_zstand_adj and labels_",DATE,".png"), width = 8, height = 8)
+ggsave(paste0("figures/Fig4_NCD target vs phi_zstand_adj and labels_",DATE,".svg"), width = 8, height = 8)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# OLD FIGURES
-# ______________________________________________________________________________________________________________________
-
-##  EXPOSURE vs PHI
-# -------------------------------------------------------
-
-pdat <- copy(data[,.(country,subscale,phi_score_stand,exp_label,exp_value_stand)])
-
-ggplot(pdat, aes(x = exp_value_stand, y = phi_score_stand)) + 
-  ggtitle("Variation of exposure (x) and PHI (y) using z-standardized values",
-             "higher values = greater exposure (negative implication for public health) or stronger response") + 
-  facet_wrap(. ~ subscale) + 
-  geom_hline(yintercept = 0) + geom_vline(xintercept = 0) +
-  geom_point() + 
-  scale_x_continuous("Exposure") + 
-  scale_y_continuous("PHI score")
-  
-ggplot(pdat, aes(x = exp_value_stand, y = phi_score_stand)) + 
-  ggtitle(
-    "Variation of exposure (x) and PHI (y) using z-standardised values",
-    "higher values = greater exposure (negative implication for public health) or stronger response\nbottom-right panels contain countries with high exposure and low response"
-  ) +
-  facet_wrap(. ~ subscale) +
-  labs(x = "z-standardised exposure", y = "z-standardised PHI subscale score") +
-  annotate(
-    "rect",
-    xmin = 1, xmax = Inf,
-    ymin = -Inf, ymax = 0,
-    fill = "red", alpha = 0.1
-  ) +
-  geom_hline(yintercept = 0) +
-  geom_vline(xintercept = 0) +
-  geom_point() +
-  geom_point(
-    data = subset(pdat, exp_value_stand > 0 & phi_score_stand < 0),
-    color = "red"
-  ) +
-  ggrepel::geom_text_repel(
-    data = ~ subset(.x, exp_value_stand > 0 & phi_score_stand < 0),
-    aes(label = country),
-    hjust = -0.1, vjust = 1.1, size = 3
-  )
-
-ggsave(paste0("figures/fig_exp vs phi_panels_",DATE,".png"), width = 8, height = 8)
-
-
-##  NCD TARGET vs PHI
-# -------------------------------------------------------
-
-setorder(data2, country, subscale)
-
-pdat <- data2[, .(x1,x2,
-                  y= phi_score[1L],
-                  yend = phi_score[1L]
-), by = .(country,subscale,achieved)]
-
-pdat[, label := as.factor(fcase(
-  subscale == "Tobacco","Tobacco: at least 30% reduction",
-  subscale == "Alcohol","Alcohol: at least 10% reduction",
-  subscale == "Unhealthy diet","Unhealthy diet: no rise",
-  subscale == "Physical inactivity","Physical inactivity: at least 10% reduction",
-  default = NA
-  ))]
-pdat$label <- factor(pdat$label, levels = c(
-  "Tobacco: at least 30% reduction",
-  "Alcohol: at least 10% reduction",
-  "Unhealthy diet: no rise",
-  "Physical inactivity: at least 10% reduction"))
-
-ggplot(pdat, aes(x = x1, xend = x2, y = y, yend = yend, color = achieved)) +
-  ggtitle(
-    "NCD Target Achievement between 2010 and 2022 (x) and PHI (y)",
-    "Green: target achieved | Red: target not achieved"
-  ) +
-  facet_wrap(. ~ label) +
-  geom_segment(arrow = arrow(length = unit(0.15, "cm")), show.legend = F) +
-  labs(x = "value", y = "phi_score") + 
-  scale_color_manual("NCD target achieved", values = c("red","darkgreen")) + 
-  labs(x = "NCD target indicator (prevalence or APC)", y = "PHI score") 
-  
-  
-ggsave(paste0("figures/fig_NCD target vs phi_panels_",DATE,".png"), width = 8, height = 8)
