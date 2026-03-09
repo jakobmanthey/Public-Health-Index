@@ -41,9 +41,9 @@ pdat_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
 ggplot(data = pdat_map) + 
   geom_sf(aes(fill = as.numeric(svalue), color = "black")) +
   scale_color_manual(values = c("black")) + 
-  scale_fill_gradient2(low = "#ca0020", mid = "#ffffbf", high = "#008837", midpoint = 52, 
-                       limits = c(30,75), na.value = "white") +
-  guides(color = F, fill = guide_legend(title = "Public Health Index")) + 
+  scale_fill_gradientn(colors = c("#a50026", "#f46d43", "#ffffbf", "#66bd63", "#006837"), 
+                       limits = c(0,100), breaks = c(0,25,50,75,100), na.value = "white") +
+  guides(color = F, fill = guide_legend(title = "Overall score\nPublic Health Index")) + 
   theme_void() + theme(legend.position = c(0, 0.22)) +
   coord_sf(xlim = c(-25,40), ylim = c(30,75), expand = FALSE) 
 
