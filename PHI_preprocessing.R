@@ -10,7 +10,7 @@ library(openxlsx)
 
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260225
+DATE <- 20260601
 
 data <- read.xlsx("data/phi_raw_data.xlsx", na.strings = ".") 
 
@@ -33,17 +33,17 @@ pdat <- data %>%
   
 
 # total scores by sub-scale
+# latest change: removed decimals, now integer
 
 pdat_scale <- pdat %>% 
   group_by(country, subscale) %>% 
-  summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 1)) %>% 
-  mutate(svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue, 0), svalue),
-         svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue / 4, 1), svalue)) %>% ungroup() %>% 
+  summarise(svalue = round_xlsx(sum(svalue, na.rm = T) / 4, 0)) %>% 
+  mutate(svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue / 4, 0), svalue)) %>% ungroup() %>% 
   mutate(subscale = factor(subscale, levels = c("Public Health Index", "Physical inactivity", "Unhealthy dietary patterns", "Alcohol", "Tobacco")),
          xcor = as.numeric(fct_rev(subscale))-0.5) 
 
 pdat_phi <- pdat_scale %>% group_by(country) %>%
-  summarise(svalue = round_xlsx(sum(svalue), 1),
+  summarise(svalue = round_xlsx(sum(svalue), 0),
             subscale = "Public Health Index", 
             xcor = 4.5) 
 
@@ -53,7 +53,7 @@ pdat_scale_phi <- pdat_scale %>% bind_rows(pdat_phi) %>%
 pdat_scale_phi %>% pivot_wider(
   id_cols = country,      
   names_from = subscale,  
-  values_from = svalue)
+  values_from = svalue) %>% arrange(-`Public Health Index`)
 
 ## Save as RDS
 

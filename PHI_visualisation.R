@@ -13,10 +13,16 @@ library(rnaturalearthdata)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260225
+DATE <- 20260601
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 
+
+# define rounding function
+
+round_xlsx <- function(x, n) {
+  sign(x) * trunc(abs(x) * 10^n + 0.5) / 10^n
+}
 
 # set ggplot standard theme
 
@@ -39,11 +45,11 @@ pdat_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
 
 # plot
 ggplot(data = pdat_map) + 
-  geom_sf(aes(fill = as.numeric(svalue), color = "black")) +
+  geom_sf(aes(fill = as.numeric(as.character(svalue)), color = "black")) +
   scale_color_manual(values = c("black")) + 
-  scale_fill_gradientn(colors = c("#a50026", "#f46d43", "#ffffbf", "#66bd63", "#006837"), 
-                       limits = c(0,100), breaks = c(0,25,50,75,100), na.value = "white") +
-  guides(color = F, fill = guide_legend(title = "Overall score\nPublic Health Index")) + 
+  scale_fill_gradientn(colors = c("#F5191C", "#E78300", "#D9CB80", "#59B29D", "#3B99B1"), 
+                       limits = c(0,100), na.value = "white", name = "Overall score\nPublic Health Index\n") +
+  guides(color = "none") + 
   theme_void() + theme(legend.position = c(0, 0.22)) +
   coord_sf(xlim = c(-25,40), ylim = c(30,75), expand = FALSE) 
 
@@ -57,7 +63,7 @@ ggsave("figures/Fig1_PHI_map.tiff", width = 8, height = 6, dpi = 300, bg = "whit
 pdat_scale_mean <- phi %>% group_by(subscale) %>% 
   summarise(country = "Average",
             xcor = mean(xcor),
-            svalue = mean(svalue),
+            svalue = round_xlsx(mean(svalue), 0),
             phi = 1)
 
 # get vector to sort data
@@ -71,7 +77,7 @@ phi_mean <- phi %>% bind_rows(pdat_scale_mean) %>%
 # plot panel A (table plot)
 apanel <- 
   ggplot(phi_mean) + 
-  geom_text(aes(y = country, x = xcor, label = paste(sprintf("%.1f", svalue)), fontface = factor(phi)), family = "Times New Roman") +
+  geom_text(aes(y = country, x = xcor, label = paste(sprintf("%.0f", svalue)), fontface = factor(phi)), family = "Times New Roman") +
   scale_x_continuous(limits=c(0,4.5), breaks = 0.5:4.5, labels = c("Tobacco", "Alcohol", "Unhealthy\ndietary\npatterns", "Physical\ninactivity", "PHI"), position = "top",
                      sec.axis = dup_axis(breaks = 1, labels = c(""))) +
   scale_y_discrete(labels = function(x) {
