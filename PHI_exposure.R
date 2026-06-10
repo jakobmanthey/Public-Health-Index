@@ -49,22 +49,13 @@ theme_set(theme_minimal() +
 # 1) LOAD DATA
 # ______________________________________________________________________________________________________________________
 
-##  exposure data
-# -------------------------------------------------------
-
-path <- file.path("data", "exposure_v2.xlsx")
-input1 <- data.table(openxlsx::read.xlsx(path, 
-                                         sheet = "summary",
-                                         rows = c(3:22),
-                                         cols = c(2:4,7,8,11,12)
-))
-
 ##  PHI data
 # -------------------------------------------------------
 
 path <- file.path("data","final_subscale_phi.rds")
 input2 <- data.table(readRDS(path))
-nrow(input2) # 468
+nrow(input2) # 90
+input2 <- input2[subscale != "Unhealthy dietary patterns"]
 
 
 ##  NCD target data
@@ -79,8 +70,8 @@ path <- file.path("data", "WHO downloads", "alcohol.csv")
 input4 <- data.table(read.csv(path))
 
 # unhealthy diet (obesity)
-path <- file.path("data", "WHO downloads", "unhealthy diet_obesity.csv")
-input5 <- data.table(read.csv(path))
+#path <- file.path("data", "WHO downloads", "unhealthy diet_obesity.csv")
+#input5 <- data.table(read.csv(path))
 
 # physical inactivity
 path <- file.path("data", "WHO downloads", "physicalactivity.csv")
@@ -129,14 +120,14 @@ alc.dat$subscale <- "Alcohol"
 
 
 # unhealthy diet (obesity)
-und.dat <- copy(input5[Dim1 == "Both sexes",.(Indicator,country = Location,ISO = SpatialDimValueCode,year = Period,
-                          est = FactValueNumeric, lci = FactValueNumericLow, uci = FactValueNumericHigh)])
-und.dat[, table(Indicator)]
-und.dat$Indicator <- NULL
-und.dat <- und.dat[ISO %in% iso.all]
-und.dat[, table(year)]
-und.dat <- und.dat[year %in% c(2010,2022)][order(ISO,year)]
-und.dat$subscale <- "Unhealthy dietary patterns"
+#und.dat <- copy(input5[Dim1 == "Both sexes",.(Indicator,country = Location,ISO = SpatialDimValueCode,year = Period,
+#                          est = FactValueNumeric, lci = FactValueNumericLow, uci = FactValueNumericHigh)])
+#und.dat[, table(Indicator)]
+#und.dat$Indicator <- NULL
+#und.dat <- und.dat[ISO %in% iso.all]
+#und.dat[, table(year)]
+#und.dat <- und.dat[year %in% c(2010,2022)][order(ISO,year)]
+#und.dat$subscale <- "Unhealthy dietary patterns"
 
 
 ##  physical inactivity
@@ -154,14 +145,14 @@ ipa.dat$subscale <- "Physical inactivity"
 ##  combine exposure data
 # -------------------------------------------------------
 
-expdat <- rbind(tob.dat,alc.dat,und.dat,ipa.dat)
+expdat <- rbind(tob.dat,alc.dat,ipa.dat)
 expdat[, period := ifelse(year == 2010,"y1","y2")]
 expdat[, country := dplyr::recode(country, 
                                   "United Kingdom of Great Britain and Northern Ireland" = "United Kingdom",
                                   "Netherlands (Kingdom of the)" = "Netherlands")]
 expdat$ISO <- NULL
 
-expdat$subscale <- factor(expdat$subscale, levels = c("Tobacco","Alcohol","Unhealthy dietary patterns","Physical inactivity"))
+expdat$subscale <- factor(expdat$subscale, levels = c("Tobacco","Alcohol","Physical inactivity"))
 
 # transform to wide
 
@@ -171,8 +162,8 @@ expdat_wide[, change.prop := y2/y1-1]
 # achieved goal?
 expdat_wide[, achieved := ifelse(subscale == "Tobacco" & change.prop <= -.3, T,
                                  ifelse(subscale == "Alcohol" & change.prop <= -.1, T,
-                                        ifelse(subscale == "Unhealthy dietary patterns" & change.prop <= 0, T,
-                                               ifelse(subscale == "Physical inactivity" & change.prop <= -0.1, T, F))))]
+                                        #ifelse(subscale == "Unhealthy dietary patterns" & change.prop <= 0, T,
+                                               ifelse(subscale == "Physical inactivity" & change.prop <= -0.1, T, F)))]
 
 
 
@@ -188,7 +179,7 @@ data <- merge(expdat_wide, add,
 out <- copy(data[,.(subscale,country,phi_score,phi_score_avg,y1,y2,change.prop = paste0(round(change.prop,4)*100,"%"),achieved)])[order(subscale,country)]
 names(out) <- c("subscale","country","subscale_PHI_score","subscale_PHI_score_average","NCD_year_1","NCD_year_2","NCD_change_%","NCD_achieved")
 
-openxlsx::write.xlsx(out,"tables/Supplementary Material 2.xlsx")
+openxlsx::write.xlsx(out,"tables/Supplementary Material 2_260610.xlsx")
 
 # ==================================================================================================================================================================
 # ==================================================================================================================================================================
@@ -229,6 +220,8 @@ plot1 <- ggplot(pdat1, aes(x = country, y = y2)) +
                      breaks = c(0,0.1,0.2,0.3,0.4), labels = scales::percent, limits = c(0, 0.4),
                      sec.axis = sec_axis(~./coef1, breaks = c(0,10,20,30), name="PHI score: subscale tobacco (yellow squares)")) +
   coord_flip()
+
+pdat1[, table(achieved)]
 
 # good practice
 pdat1[order(y2, decreasing = F)][1:5]
@@ -278,45 +271,6 @@ pdat2[order(change.prop, decreasing = T)][1:5]
 pdat2[, mean(phi_score), by = achieved]
 
 
-# UNHEALTHY DIET
-# ...................
-
-pdat3 <- pdat[subscale == "Unhealthy dietary patterns"][order(y2, decreasing = T)]
-pdat3$country <- factor(pdat3$country, levels = unique(pdat3$country))
-coef <- max(pdat3$y2/100) / max(pdat3$phi_score)
-coef3 <- 0.013333
-pdat3[, table(phi_score)]
-pdat3[, ':=' (y1 = y1/100,
-              y2 = y2/100,
-              phi_score_plot = phi_score*coef3) ]
-
-plot3 <- ggplot(pdat3, aes(x = country, y = y2)) + 
-  geom_col(fill = colors4[3], show.legend = F) + 
-  geom_segment(aes(y = y1, yend = y2, color = achieved), linewidth = 1.5,
-               arrow = arrow(length = unit(0.15, "cm")), show.legend = F) +
-  geom_point(aes(y = phi_score_plot), shape = 23, size = 3, show.legend = F, fill = fillcol) +
-  scale_color_manual(values = redgreen) + 
-  scale_x_discrete("") +
-  scale_y_continuous(name = "Prevalence of obesity in 2022 (bars) and change since 2010 (arrows)", 
-                     breaks = c(0,0.1,0.2,0.3,0.4), labels = scales::percent, limits = c(0, 0.4),
-                     sec.axis = sec_axis(~./coef3, breaks = c(0,10,20,30), name="PHI score: subscale unhealthy dietary patterns (yellow squares)")) +
-  coord_flip()
-
-pdat3[, table(achieved)]
-
-# good practice
-pdat3[order(y2, decreasing = F)][1:5]
-pdat3[order(change.prop, decreasing = F)][1:5]
-pdat3[,.(country,y1,y2,change = y1-y2)][order(change, decreasing = T)][1:5]
-
-# bad practice
-pdat3[order(y2, decreasing = T)][1:5]
-pdat3[order(change.prop, decreasing = T)][1:5]
-pdat3[order(y1-y2, decreasing = F),][1:5]
-pdat3[order(y1-y2, decreasing = F),.(country,y1-y2)][1:5]
-
-pdat3[, mean(phi_score), by = achieved]
-
 # PHYSICAL INACTIVITY
 # ...................
 
@@ -330,7 +284,7 @@ pdat4[, ':=' (y1 = y1/100,
               phi_score_plot = phi_score*coef4) ]
 
 plot4 <- ggplot(pdat4, aes(x = country, y = y2)) + 
-  geom_col(fill = colors4[4], show.legend = F) + 
+  geom_col(fill = colors4[3], show.legend = F) + 
   geom_segment(aes(y = y1, yend = y2, color = achieved), linewidth = 1.5,
                arrow = arrow(length = unit(0.15, "cm")), show.legend = F) +
   geom_point(aes(y = phi_score_plot), shape = 23, size = 3, show.legend = F, fill = fillcol) +
@@ -359,16 +313,24 @@ pdat4[, mean(y2), by = achieved]
 # COMBINE
 # ...................
 
-cowplot::plot_grid(plot1,plot2,plot3,plot4,
-                   nrow = 2,
-                   labels = c("A", "B","C","D"),
+cowplot::plot_grid(plot1,plot2,plot4,
+                   nrow = 3,
+                   labels = c("A","B","C"),
                    label_size = 16,
                    label_fontface = "bold",
                    rel_widths = c(1, 1, 1, 1),
                    align = "h")
 
-ggsave(paste0("figures/Fig4_NCD target vs phi_bars and arrows_",DATE,".svg"), width = 15, height = 10)
+ggsave(paste0("figures/Fig4_NCD target vs phi_bars and arrows_",DATE,".svg"), width = 8, height = 10)
 
 
+# Summary
+# ...................
+
+pdat[, sum(achieved), by = country][order(V1)]
+pdat[, sum(achieved), by = country][V1 == 3]
+pdat[, sum(achieved), by = country][V1 == 2]
+pdat[, sum(achieved), by = country][V1 == 1]
+pdat[, sum(achieved), by = country][V1 == 0]
 
 
