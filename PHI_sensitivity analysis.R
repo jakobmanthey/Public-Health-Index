@@ -46,10 +46,10 @@ phi_NCDweight <- data %>%
   summarise(svalue = round_xlsx(sum(svalue, na.rm = T), 0)) %>% 
   mutate(svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue / 4, 0), svalue)) %>% 
   pivot_wider(id_cols = country, names_from = subscale, values_from = svalue) %>%
-  mutate(`Public Health Index` = round_xlsx((0.042 / (0.1 + 0.072 + 0.042 + 0.007) * Alcohol) + 
-                                 (0.1 / (0.1 + 0.072 + 0.042 + 0.007) * Tobacco) + 
-                                 (0.072 / (0.1 + 0.072 + 0.042 + 0.007) * `Unhealthy dietary patterns`) + 
-                                 (0.007 / (0.1 + 0.072 + 0.042 + 0.007) * `Physical inactivity`), 0))
+  mutate(`Public Health Index` = round_xlsx((0.039 / (0.102 + 0.091 + 0.039 + 0.01) * Alcohol) + 
+                                 (0.102 / (0.102 + 0.091 + 0.039 + 0.01) * Tobacco) + 
+                                 (0.091 / (0.102 + 0.091 + 0.039 + 0.01) * `Unhealthy dietary patterns`) + 
+                                 (0.01 / (0.102 + 0.091 + 0.039 + 0.01) * `Physical inactivity`), 0))
 phi_NCDweight %>% arrange(-`Public Health Index`)
 
 # Join different solutions 
