@@ -8,11 +8,12 @@ library(ggplot2)
 library(ggthemes)
 library(ggrepel)
 library(paletteer)
+library(openxlsx)
 
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260601
+DATE <- 20260615
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 
@@ -51,43 +52,27 @@ phi_NCDweight <- data %>%
                                  (0.007 / (0.1 + 0.072 + 0.042 + 0.007) * `Physical inactivity`), 0))
 phi_NCDweight %>% arrange(-`Public Health Index`)
 
-# SA3: marginal distribution
-phi_marginal <- data %>% 
-  group_by(country, subscale) %>% 
-  summarise(svalue = round_xlsx(sum(svalue, na.rm = T), 0)) %>% 
-  mutate(svalue = ifelse(subscale == "Physical inactivity", round_xlsx(svalue / 4, 0), svalue),
-         insuff = ifelse(svalue < 50, 1, 0),
-         vinsuff = ifelse(svalue < 25, 1, 0)) %>% 
-  group_by(country) %>% 
-  summarise(insuff_subscale = toString(subscale[insuff == 1]),
-            vinsuff_subscale = toString(subscale[vinsuff == 1]),
-            insuff = sum(insuff)*-1,
-            vinsuff = sum(vinsuff)*-1)
-
 # Join different solutions 
 phi_alt <- phi %>% filter(subscale == "Public Health Index") %>% select(country, svalue) %>% rename("EqualWeight" = "svalue") %>% 
   left_join(phi_noPA[,c("country", "Public Health Index")]) %>% rename("NoPA" = "Public Health Index") %>% 
-  left_join(phi_NCDweight[,c("country", "Public Health Index")]) %>% rename("NCDweight" = "Public Health Index") %>% 
-  left_join(phi_marginal[,c("country", "insuff", "insuff_subscale")]) %>% rename("InsuffPol" = "insuff")
+  left_join(phi_NCDweight[,c("country", "Public Health Index")]) %>% rename("NCDweight" = "Public Health Index") 
 
 # 1) Bump diagram  to illustrate scoring
 
 temp <- phi_alt %>%  
-  pivot_longer(cols = c("EqualWeight",  "NoPA", "NCDweight", "InsuffPol"), 
+  pivot_longer(cols = c("EqualWeight",  "NoPA", "NCDweight"), 
                names_to = "measure", values_to = "score") %>%
   mutate(x = case_when(
     measure == "EqualWeight" ~ 1,
     measure == "NCDweight" ~ 2,
     measure == "NoPA" ~ 3,
-    measure == "InsuffPol" ~ 4,
     TRUE ~ NA)) 
-order <- temp %>% filter(measure != "InsuffPol") %>% filter(x == max(x)) %>% 
+order <- temp %>% filter(x == max(x)) %>% 
   arrange(-score) %>% pull(country)   
 colors <- as.vector(paletteer_c("grDevices::Zissou 1", 18))
 names(colors) <- order 
 
-ggplot(temp %>% filter(measure != "InsuffPol"), 
-       aes(x = x, y = score, group = country, color = country)) +
+ggplot(temp, aes(x = x, y = score, group = country, color = country)) +
   geom_line(linewidth = 0.5) +  
   geom_point(size = 3, shape = 18) +      
   geom_text_repel(data = temp %>% filter(measure != "InsuffPol") %>% filter(x == max(x)),  
@@ -109,15 +94,13 @@ ggsave("figures/FigSA1_PHI.tiff", width = 6, height = 8, dpi = 300, bg = "white"
 temp <- phi_alt %>%
   mutate(EqualWeight = rank(-EqualWeight, ties.method = "min"),
          NCDweight = rank(-NCDweight, ties.method = "min"),
-         NoPA = rank(-NoPA, ties.method = "min"),
-         InsuffPol = rank(-InsuffPol, ties.method = "min")) %>% 
-  pivot_longer(cols = c("EqualWeight", "NCDweight", "NoPA", "InsuffPol"),
+         NoPA = rank(-NoPA, ties.method = "min")) %>% 
+  pivot_longer(cols = c("EqualWeight", "NCDweight", "NoPA"),
                names_to = "measure", values_to = "rank") %>%
   mutate(measure_num = case_when(
     measure == "EqualWeight" ~ 1,
     measure == "NCDweight" ~ 2, 
     measure == "NoPA" ~ 3, 
-    measure == "InsuffPol" ~ 4,
     TRUE ~ NA)) 
 
 temp_segments <- temp %>% 
