@@ -120,17 +120,17 @@ ggplot() +
     size = 3, shape = 18) +
   geom_text_repel(data = temp %>% filter(measure_num == min(measure_num)),  
                   aes(x = measure_num, y = rank, label = country, colour = country),
-                  direction = "y", nudge_x = 3.5,
+                  direction = "y", nudge_x = 2.5,
                   segment.color = NA, box.padding = 0.5, size = 3, show.legend = FALSE) +
-  scale_x_continuous(breaks = c(1,2,3,4), 
-                     labels = c("Equal weight\n(original)", "NCD impact\nweight", "Physical acitivty\nexcluded", "Insufficient\npolicy adoption")) +
+  scale_x_continuous(breaks = c(1,2,3), 
+                     labels = c("Equal weight\n(original)", "NCD impact\nweight", "Physical acitivty\nexcluded")) +
   scale_y_reverse(breaks = 1:18) + 
   scale_color_manual(values = colors) +  
   labs(x = "", y = "Country ranking") + guides(color = "none") + 
   theme_classic() + theme(axis.ticks = element_blank())
 
 # export
-ggsave("figures/FigSA2_PHIranking.tiff", width = 7, height = 8, dpi = 300, bg = "white")
+ggsave("figures/FigSA2_PHIranking.tiff", width = 5, height = 7, dpi = 300, bg = "white")
 
 # save appendix table
 write.xlsx(phi_alt, "tables/Supp_Tables_PHI-SensAnalyse.xlsx")
