@@ -49,15 +49,6 @@ theme_set(theme_minimal() +
 # 1) LOAD DATA
 # ______________________________________________________________________________________________________________________
 
-##  PHI data
-# -------------------------------------------------------
-
-#path <- file.path("data","final_subscale_phi.rds")
-#input2 <- data.table(readRDS(path))
-#nrow(input2) # 90
-#input2 <- input2[subscale != "Unhealthy dietary patterns"]
-
-
 ##  NCD target data
 # -------------------------------------------------------
 
@@ -72,8 +63,6 @@ input2 <- data.table(read.csv(path))
 # physical inactivity
 path <- file.path("data", "WHO downloads", "physicalactivity.csv")
 input3 <- data.table(read.csv(path))
-
-
 
 ##  ISO codes
 # -------------------------------------------------------
@@ -126,7 +115,7 @@ ipa.dat <- ipa.dat[year %in% c(2010,2022)][order(ISO,year)]
 ipa.dat$subscale <- "Physical inactivity"
 
 
-##  combine exposure data
+##  combine data
 # -------------------------------------------------------
 
 expdat <- rbind(tob.dat,alc.dat,ipa.dat)
@@ -165,7 +154,7 @@ openxlsx::write.xlsx(out,"tables/Supplementary Material 2_260616.xlsx")
 # 3) FIGURES
 # ______________________________________________________________________________________________________________________
 
-##  NCD TARGET vs PHI - bar plots
+##  NCD TARGET - bar plots
 # -------------------------------------------------------
 
 pdat <- copy(expdat_wide)
@@ -273,8 +262,8 @@ cowplot::plot_grid(plot1,plot2,plot4,
                    rel_widths = c(1, 1, 1, 1),
                    align = "h")
 
-ggsave(paste0("figures/Fig4_NCD target vs phi_bars and arrows_",DATE,".svg"), width = 8, height = 10)
-ggsave(paste0("figures/Fig4_NCD target vs phi_bars and arrows_",DATE,".tiff"), width = 8, height = 10, dpi = 300)
+ggsave(paste0("figures/Fig4_NCD target_bars and arrows_",DATE,".svg"), width = 8, height = 10)
+ggsave(paste0("figures/Fig4_NCD target_bars and arrows_",DATE,".tiff"), width = 8, height = 10, dpi = 300)
 
 
 
