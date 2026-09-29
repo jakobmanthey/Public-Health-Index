@@ -13,7 +13,7 @@ library(openxlsx)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260615
+DATE <- 20260914
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 
@@ -134,3 +134,7 @@ ggsave("figures/FigSA2_PHIranking.tiff", width = 5, height = 7, dpi = 300, bg = 
 
 # save appendix table
 write.xlsx(phi_alt, "tables/Supp_Tables_PHI-SensAnalyse.xlsx")
+
+# get Spearman rank correlations
+cor.test(phi_alt$EqualWeight, phi_alt$NCDweight, method = 'spearman', exact = FALSE)
+cor.test(phi_alt$EqualWeight, phi_alt$NoPA, method = 'spearman', exact = FALSE)

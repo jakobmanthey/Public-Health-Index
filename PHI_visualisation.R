@@ -13,7 +13,7 @@ library(rnaturalearthdata)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260601
+DATE <- 20260818
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 
@@ -55,6 +55,52 @@ ggplot(data = pdat_map) +
 
 # export
 ggsave("figures/Fig1_PHI_map.tiff", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NEW Figure 2: Overall PHI Scoreing and by Subscale
+
+# get average across scale
+pdat_scale_mean <- phi %>% group_by(subscale) %>% 
+  summarise(country = "Average",
+            xcor = mean(xcor),
+            svalue = round_xlsx(mean(svalue), 0),
+            phi = 1)
+
+# get vector to sort data
+order <- phi %>% filter(subscale == "Public Health Index") %>% arrange(svalue) %>% pull(country)
+order <- c("Average", order)
+
+# add subscale averages to phi data
+phi_mean <- phi %>% bind_rows(pdat_scale_mean) %>%
+  mutate(country = factor(country, levels = order)) %>%
+  # get Q5 ranking for each subscale
+  mutate(rank = factor(case_when(
+    svalue <= 5 ~ 1,
+    svalue > 5 & svalue <= 10 ~ 2,
+    svalue > 10 & svalue <= 15 ~ 3,
+    svalue > 15 & svalue <= 20 ~ 4,
+    svalue > 20 ~ 5,
+    TRUE ~ NA), labels = c("Q1", "Q2", "Q3", "Q4", "Q5")),
+    subscale = factor(subscale, levels = c("Tobacco", "Alcohol", "Unhealthy dietary patterns", "Physical inactivity", "Public Health Index"))) 
+
+# remove PHI score for heatmap
+phi_mean_new <- phi_mean %>% filter(subscale != "Public Health Index")
+
+# create heatmap
+ggplot(phi_mean_new, aes(x = subscale, y = country, fill = rank)) +
+  geom_tile() + 
+  scale_fill_manual(values = c("#F5191C", "#E78300", "#D9CB80", "#59B29D", "#3B99B1"), 
+                    na.value = "white", name = "Rank", guide = guide_legend(reverse = TRUE)) +
+  scale_y_discrete(labels = function(x) {
+    ifelse(x == "Average", expression(bold("Average")), x)
+  }) +
+  scale_discrete_manual(values = c("plain", "bold"), aesthetics = "fontface", guide = "none") + 
+  labs(x = NULL, y = NULL) +
+  coord_equal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid = element_blank())
+
+ggsave("figures/Fig2_PHI_subscales.tiff", width = 4, height = 8, dpi = 300, bg = "white")
 
 
 # Figure 2: Overall PHI Scoreing and by Subscale
