@@ -13,7 +13,7 @@ library(openxlsx)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260914
+DATE <- 20260928
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 

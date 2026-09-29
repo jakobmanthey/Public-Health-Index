@@ -10,9 +10,9 @@ library(openxlsx)
 
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260601
+DATE <- 20260928
 
-data <- read.xlsx("data/phi_raw_data.xlsx", na.strings = ".") 
+data <- read.xlsx("data/phi_raw_data_upt092026.xlsx", na.strings = ".") 
 
 # define rounding function
 

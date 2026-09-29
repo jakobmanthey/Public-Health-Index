@@ -13,7 +13,7 @@ library(rnaturalearthdata)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260818
+DATE <- 20260928
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 
@@ -55,52 +55,6 @@ ggplot(data = pdat_map) +
 
 # export
 ggsave("figures/Fig1_PHI_map.tiff", width = 8, height = 6, dpi = 300, bg = "white")
-
-
-# NEW Figure 2: Overall PHI Scoreing and by Subscale
-
-# get average across scale
-pdat_scale_mean <- phi %>% group_by(subscale) %>% 
-  summarise(country = "Average",
-            xcor = mean(xcor),
-            svalue = round_xlsx(mean(svalue), 0),
-            phi = 1)
-
-# get vector to sort data
-order <- phi %>% filter(subscale == "Public Health Index") %>% arrange(svalue) %>% pull(country)
-order <- c("Average", order)
-
-# add subscale averages to phi data
-phi_mean <- phi %>% bind_rows(pdat_scale_mean) %>%
-  mutate(country = factor(country, levels = order)) %>%
-  # get Q5 ranking for each subscale
-  mutate(rank = factor(case_when(
-    svalue <= 5 ~ 1,
-    svalue > 5 & svalue <= 10 ~ 2,
-    svalue > 10 & svalue <= 15 ~ 3,
-    svalue > 15 & svalue <= 20 ~ 4,
-    svalue > 20 ~ 5,
-    TRUE ~ NA), labels = c("Q1", "Q2", "Q3", "Q4", "Q5")),
-    subscale = factor(subscale, levels = c("Tobacco", "Alcohol", "Unhealthy dietary patterns", "Physical inactivity", "Public Health Index"))) 
-
-# remove PHI score for heatmap
-phi_mean_new <- phi_mean %>% filter(subscale != "Public Health Index")
-
-# create heatmap
-ggplot(phi_mean_new, aes(x = subscale, y = country, fill = rank)) +
-  geom_tile() + 
-  scale_fill_manual(values = c("#F5191C", "#E78300", "#D9CB80", "#59B29D", "#3B99B1"), 
-                    na.value = "white", name = "Rank", guide = guide_legend(reverse = TRUE)) +
-  scale_y_discrete(labels = function(x) {
-    ifelse(x == "Average", expression(bold("Average")), x)
-  }) +
-  scale_discrete_manual(values = c("plain", "bold"), aesthetics = "fontface", guide = "none") + 
-  labs(x = NULL, y = NULL) +
-  coord_equal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        panel.grid = element_blank())
-
-ggsave("figures/Fig2_PHI_subscales.tiff", width = 4, height = 8, dpi = 300, bg = "white")
 
 
 # Figure 2: Overall PHI Scoreing and by Subscale
@@ -145,20 +99,20 @@ pdat_scale_b <- phi %>% filter(subscale != "Public Health Index") %>% bind_rows(
 
 # plot panel B (bar plot)
 bpanel <- 
-  ggplot(pdat_scale_b) + 
+  ggplot(pdat_scale_b %>% filter(country != "Average")) + 
   geom_bar(aes(y = country, x = svalue, fill = subscale), stat = "identity", position = "stack") + 
   geom_vline(xintercept = 100, color = "grey50") +
   scale_fill_manual(values = c('#a1dab4','#41b6c4','#2c7fb8','#253494'), name = "") + 
   scale_x_continuous(limits = c(0,100), sec.axis = dup_axis(breaks = 1, labels = c("\n"))) + 
-  scale_y_discrete(labels = NULL) +
+ #scale_y_discrete(labels = NULL) +
   guides(fill = guide_legend(reverse = T)) +
   theme(panel.grid.major.y = element_blank())
 
 # combine panel A + B
-fig_comb <- grid.arrange(apanel, bpanel, widths = c(1,1))
+# fig_comb <- grid.arrange(apanel, bpanel, widths = c(1,1))
 
 # export
-ggsave("figures/Fig2_PHI_CountryRanking.tiff", fig_comb, width = 12, height = 5, dpi = 300, bg = "white")
+ggsave("figures/Fig2_PHI_CountryRanking.tiff", bpanel, width = 7, height = 6, dpi = 300, bg = "white")
 
 
 # Figure 3: % by policy domain
