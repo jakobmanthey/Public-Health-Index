@@ -262,8 +262,8 @@ cowplot::plot_grid(plot1,plot2,plot4,
                    rel_widths = c(1, 1, 1, 1),
                    align = "h")
 
-ggsave(paste0("figures/Fig4_NCD target_bars and arrows_",DATE,".svg"), width = 8, height = 10)
-ggsave(paste0("figures/Fig4_NCD target_bars and arrows_",DATE,".tiff"), width = 8, height = 10, dpi = 300)
+ggsave(paste0("figures/Fig4_NCD target change_",DATE,".svg"), width = 8, height = 10)
+ggsave(paste0("figures/Fig4_NCD target change_",DATE,".tiff"), width = 8, height = 10, dpi = 300)
 
 
 
