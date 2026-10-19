@@ -13,11 +13,12 @@ library(openxlsx)
 # Load data
 rm(list = ls())
 setwd("/Users/carolinkilian/Desktop/Research projects/Public Health Index/Github/Public-Health-Index/")
-DATE <- 20260928
+DATE <- 20261015
 
 data <- readRDS("data/phi_preprocessed.rds") 
 phi <- readRDS("data/final_subscale_phi.rds") 
-
+phi_nutrition <- read_csv("data/data_comp_FREI_PHINut.csv")
+  
 # functions
 round_xlsx <- function(x, n) {
   sign(x) * trunc(abs(x) * 10^n + 0.5) / 10^n
@@ -138,3 +139,6 @@ write.xlsx(phi_alt, "tables/Supp_Tables_PHI-SensAnalyse.xlsx")
 # get Spearman rank correlations
 cor.test(phi_alt$EqualWeight, phi_alt$NCDweight, method = 'spearman', exact = FALSE)
 cor.test(phi_alt$EqualWeight, phi_alt$NoPA, method = 'spearman', exact = FALSE)
+
+# get Spearman rank correlation for unhealthy dietary pattern subscale and FREI score
+cor.test(phi_nutrition$frei, phi_nutrition$phi_nutrition, method = 'spearman', exact = FALSE)
