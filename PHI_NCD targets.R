@@ -159,7 +159,7 @@ openxlsx::write.xlsx(out,"tables/Supplementary Material 2_260616.xlsx")
 
 pdat <- copy(expdat_wide)
 pdat[, sum(achieved), by = country][order(V1)] # how many have achieved the aims?
-redgreen <- c("#F46D43", "#66BD63")   
+redgreen <- c("#af8dc3","#7fbf7b")
 colors3  <- rev(c("#a1dab4","#41b6c4","#2c7fb8","#253494"))[1:3]
 
 # TOBACCO
